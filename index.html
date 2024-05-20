@@ -1,21 +1,42 @@
-<!DOCTYPE HTML>
+<!DOCTYPE html>
 
 <html>
   <head>
     <meta http-equiv="Content-Type" content="text/html, charset=UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="stylesheet" href="./public/styles.css" />
     <title>timpepper.dev</title>
+    <script type="module" src="./public/pkg/astar_wasm.js"></script>
+    <script type="module">
+      import { initSync, a_star } from "./public/pkg/astar_wasm.js";
+      fetch('/public/pkg/astar_wasm_bg.wasm')
+            .then(response => response.arrayBuffer())
+            .then(buffer => initSync(buffer))
+            .then(result => {
+                // Access the exported function
+                window.a_star = a_star;
+
+                // Use the result as needed
+                console.log("Success");
+            })
+            .catch(error => {
+                // Handle errors
+                console.error('Error loading or instantiating WASM module:', error);
+            });
+    </script>
+    <script type="module" src="./public/constants.js"></script>
+    <script type="module" src="./public/state.js"></script>
+    <script type="module" src="./public/canvas.js"></script>
   </head>
   <body>
     <header>
       <h1>A* Search Algorithm</h1>
       <p>
-        Javascript implementation of the popular A* Search Algorithm intended as a learning 
-        exercise and reference for future game development endeavors.
+        Javascript implementation of the popular A* Search Algorithm intended as
+        a learning exercise and reference for future game development endeavors.
       </p>
     </header>
-  
+
     <!-- <div class="banner banner-warn">
       <p>This is a work in progress!</p>
       <p>
@@ -31,7 +52,7 @@
       </ul>
       <p><a href="https://timpepper.dev">Take me home!!</a></p>
     </div> -->
-    
+
     <div id="canvas_wrapper">
       <div>
         <canvas id="canvas"></canvas>
@@ -44,41 +65,33 @@
             <div id="canvas_legend_end" class="canvas_legend_block"></div>
           </div>
           <div id="canvas_legend_buttons">
-            <button 
-              class="canvas_legend_button" 
-              onclick="updateSelectedCellState(CELL_STATES.START)"
+            <button
+              class="canvas_legend_button"
+              onclick="updateSelectedCellState(window.CELL_STATES.START)"
             >
               Start
             </button>
-            <button 
-              class="canvas_legend_button selected" 
-              onclick="updateSelectedCellState(CELL_STATES.COLLISION)"
+            <button
+              class="canvas_legend_button selected"
+              onclick="updateSelectedCellState(window.CELL_STATES.COLLISION)"
             >
               Wall
             </button>
-            <button 
-              class="canvas_legend_button" 
-              onclick="updateSelectedCellState(CELL_STATES.END)"
+            <button
+              class="canvas_legend_button"
+              onclick="updateSelectedCellState(window.CELL_STATES.END)"
             >
               End
             </button>
           </div>
         </div>
         <div class="canvas_buttons">
-          <button 
-            class="canvas_legend_button" 
-            onclick="resetCellState()"
-          >
+          <button class="canvas_legend_button" onclick="resetCellState()">
             Reset
           </button>
         </div>
       </div>
     </div>
     <span>Timer: </span><span id="duration">0.00ms</span>
-
-    <script type="text/javascript" src="./constants.js"></script>
-    <script type="text/javascript" src="./state.js"></script>
-    <script type="text/javascript" src="./canvas.js"></script>
-    <script type="text/javascript" src="./a-star.js"></script>
   </body>
 </html>

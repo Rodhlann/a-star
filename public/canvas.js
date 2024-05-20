@@ -1,37 +1,60 @@
-const canvas = document.getElementById('canvas');
-const ctx = canvas.getContext('2d');
+import { STATE, stateInit } from "./state.js";
+import {
+  CANVAS_WIDTH,
+  CANVAS_HEIGHT,
+  GRID_LINE_WIDTH,
+  GRID_CELL_WIDTH,
+  GRID_WIDTH_COUNT,
+  GRID_HEIGHT_COUNT,
+  GRID_LINE_COLOR,
+  GRID_BORDER_COLOR,
+  COLLISION_COLOR,
+  START_COLOR,
+  PATH_COLOR,
+  END_COLOR,
+  CELL_STATES,
+} from "./constants.js";
+import { Point, a_star } from "./pkg/astar_wasm.js";
+
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
 
 ctx.canvas.width = CANVAS_WIDTH;
 ctx.canvas.height = CANVAS_HEIGHT;
 
 function debugGrid() {
-  let str = ''
+  let str = "";
   STATE.grid.forEach((row) => {
-    str += JSON.stringify(row) + '\n'
-  })
-  console.log(str + '\n')
+    str += JSON.stringify(row) + "\n";
+  });
+  console.log(str + "\n");
+}
+
+function mapCoordToPoint(x, y) {
+  const point = new Point(x, y)
+  return point;
 }
 
 function pixelToCellPos(x, y) {
   return {
     x: Math.floor((x / CANVAS_WIDTH) * GRID_WIDTH_COUNT),
-    y: Math.floor((y / CANVAS_HEIGHT) * GRID_HEIGHT_COUNT) 
-  }
+    y: Math.floor((y / CANVAS_HEIGHT) * GRID_HEIGHT_COUNT),
+  };
 }
 
 function cellToCellPixelPos(x, y) {
   return {
-    x: (CANVAS_WIDTH * (x / GRID_WIDTH_COUNT)),
-    y: (CANVAS_HEIGHT * (y / GRID_HEIGHT_COUNT))
-  }
+    x: CANVAS_WIDTH * (x / GRID_WIDTH_COUNT),
+    y: CANVAS_HEIGHT * (y / GRID_HEIGHT_COUNT),
+  };
 }
 
 // Not sure if this is necessary
 function cellToCenteredPixelPos(x, y) {
   return {
-    x: (CANVAS_WIDTH * (x / GRID_WIDTH_COUNT)) + (GRID_CELL_WIDTH / 2),
-    y: (CANVAS_HEIGHT * (y / GRID_HEIGHT_COUNT)) + (GRID_CELL_WIDTH / 2)
-  }
+    x: CANVAS_WIDTH * (x / GRID_WIDTH_COUNT) + GRID_CELL_WIDTH / 2,
+    y: CANVAS_HEIGHT * (y / GRID_HEIGHT_COUNT) + GRID_CELL_WIDTH / 2,
+  };
 }
 
 function resetAStarPath() {
@@ -44,13 +67,13 @@ function resetAStarPath() {
 
 function flattenNodes(node) {
   if (!node) return [];
-  return [{x: node.x, y: node.y}, ...flattenNodes(node.parent)]
+  return [{ x: node.x, y: node.y }, ...flattenNodes(node.parent)];
 }
 
 function drawAStarPath(finalNode) {
   const aStarPath = flattenNodes(finalNode);
   STATE.aStarPath = aStarPath;
-  aStarPath.forEach(({x, y}) => {
+  aStarPath.forEach(({ x, y }) => {
     if (STATE.grid[y][x] === CELL_STATES.EMPTY)
       STATE.grid[y][x] = CELL_STATES.PATH;
   });
@@ -58,17 +81,22 @@ function drawAStarPath(finalNode) {
 
 function fillCell(cellPixelPos, color) {
   ctx.fillStyle = color;
-  ctx.fillRect(cellPixelPos.x, cellPixelPos.y, GRID_CELL_WIDTH, GRID_CELL_WIDTH);
+  ctx.fillRect(
+    cellPixelPos.x,
+    cellPixelPos.y,
+    GRID_CELL_WIDTH,
+    GRID_CELL_WIDTH
+  );
 }
 
 function drawCells() {
   STATE.grid.forEach((row, y) => {
     row.forEach((state, x) => {
-      const cellPixelPos = cellToCellPixelPos(x, y)
+      const cellPixelPos = cellToCellPixelPos(x, y);
       ctx.beginPath();
-      switch(state) {
+      switch (state) {
         case CELL_STATES.END: {
-          fillCell(cellPixelPos, END_COLOR)
+          fillCell(cellPixelPos, END_COLOR);
           break;
         }
         case CELL_STATES.START: {
@@ -84,33 +112,38 @@ function drawCells() {
           break;
         }
         default: {
-          ctx.clearRect(cellPixelPos.x, cellPixelPos.y, GRID_CELL_WIDTH, GRID_CELL_WIDTH);
+          ctx.clearRect(
+            cellPixelPos.x,
+            cellPixelPos.y,
+            GRID_CELL_WIDTH,
+            GRID_CELL_WIDTH
+          );
         }
       }
-    })
-  })
+    });
+  });
 }
 
 function drawGrid() {
   // Grid Setup
-  ctx.beginPath()
+  ctx.beginPath();
   ctx.fillStyle = GRID_BORDER_COLOR;
   ctx.fillRect(0, 0, CANVAS_WIDTH, GRID_LINE_WIDTH);
   ctx.fillRect(0, 0, GRID_LINE_WIDTH, CANVAS_HEIGHT);
   ctx.fillRect(0, CANVAS_HEIGHT - 1, CANVAS_WIDTH, GRID_LINE_WIDTH);
   ctx.fillRect(CANVAS_WIDTH - 1, 0, GRID_LINE_WIDTH, CANVAS_HEIGHT);
 
-  ctx.beginPath()
+  ctx.beginPath();
   ctx.fillStyle = GRID_LINE_COLOR;
   [...Array(GRID_WIDTH_COUNT)].forEach((_, idx) => {
     if (!idx) return;
     ctx.fillRect(0, idx * GRID_CELL_WIDTH, CANVAS_WIDTH, GRID_LINE_WIDTH);
     ctx.fillRect(idx * GRID_CELL_WIDTH, 0, GRID_LINE_WIDTH, CANVAS_WIDTH);
-  })
+  });
 }
 
 function drawDuration() {
-  document.getElementById('duration').innerHTML = `${STATE.duration}ms`;
+  document.getElementById("duration").innerHTML = `${STATE.duration}ms`;
 }
 
 function draw() {
@@ -120,7 +153,13 @@ function draw() {
     const height = STATE.grid.length;
 
     const start = performance.now();
-    const result = aStar(STATE.startPos, STATE.endPos, width, height, STATE.walls)
+    const result = a_star(
+      width,
+      height,
+      mapCoordToPoint(STATE.startPos.x, STATE.startPos.y),
+      mapCoordToPoint(STATE.endPos.x, STATE.endPos.y),
+      STATE.walls
+    );
     const duration = performance.now() - start;
     STATE.duration = duration.toFixed(2);
 
@@ -131,49 +170,54 @@ function draw() {
   drawDuration();
 }
 
-function resetCellState() {
-  STATE = stateInit();
+window.resetCellState = function () {
+  const init = stateInit();
+  STATE.grid = init.grid;
+  STATE.cellState = init.cellState;
+  STATE.startPos = init.startPos;
+  STATE.endPos = init.endPos;
+  STATE.aStarPath = init.aStarPath;
+  STATE.walls = init.walls;
+  STATE.duration = init.duration;
   draw();
 }
 
-function updateSelectedCellState(state) {
-  STATE.cellState = state
+window.updateSelectedCellState = function (state) {
+  STATE.cellState = state;
 
-  const [
-    start, 
-    collision, 
-    end
-  ] = document.getElementsByClassName('canvas_legend_button')
-  switch(state) {
+  const [start, collision, end] = document.getElementsByClassName(
+    "canvas_legend_button"
+  );
+  switch (state) {
     case CELL_STATES.END: {
-      start.classList.remove('selected')
-      collision.classList.remove('selected')
-      end.classList.add('selected')
+      start.classList.remove("selected");
+      collision.classList.remove("selected");
+      end.classList.add("selected");
       break;
     }
     case CELL_STATES.START: {
-      start.classList.add('selected')
-      collision.classList.remove('selected')
-      end.classList.remove('selected')
+      start.classList.add("selected");
+      collision.classList.remove("selected");
+      end.classList.remove("selected");
       break;
     }
     case CELL_STATES.COLLISION:
-      start.classList.remove('selected')
-      collision.classList.add('selected')
-      end.classList.remove('selected')
+      start.classList.remove("selected");
+      collision.classList.add("selected");
+      end.classList.remove("selected");
       break;
     default: {
-      start.classList.remove('selected')
-      collision.classList.remove('selected')
-      end.classList.remove('selected')
+      start.classList.remove("selected");
+      collision.classList.remove("selected");
+      end.classList.remove("selected");
     }
   }
 }
 
 function setCellState(x, y) {
-  const gridState = STATE.grid[y][x]
+  const gridState = STATE.grid[y][x];
 
-  switch(STATE.cellState) {
+  switch (STATE.cellState) {
     case CELL_STATES.END: {
       if (gridState === CELL_STATES.START) break;
       if (gridState === CELL_STATES.COLLISION) break;
@@ -184,9 +228,9 @@ function setCellState(x, y) {
       }
 
       if (STATE.endPos)
-        STATE.grid[STATE.endPos.y][STATE.endPos.x] = CELL_STATES.EMPTY
-      STATE.grid[y][x] = CELL_STATES.END
-      STATE.endPos = { x, y }
+        STATE.grid[STATE.endPos.y][STATE.endPos.x] = CELL_STATES.EMPTY;
+      STATE.grid[y][x] = CELL_STATES.END;
+      STATE.endPos = { x, y };
       break;
     }
 
@@ -200,9 +244,9 @@ function setCellState(x, y) {
       }
 
       if (STATE.startPos)
-        STATE.grid[STATE.startPos.y][STATE.startPos.x] = CELL_STATES.EMPTY
-      STATE.grid[y][x] = CELL_STATES.START
-      STATE.startPos = { x, y }
+        STATE.grid[STATE.startPos.y][STATE.startPos.x] = CELL_STATES.EMPTY;
+      STATE.grid[y][x] = CELL_STATES.START;
+      STATE.startPos = { x, y };
       break;
     }
 
@@ -212,10 +256,12 @@ function setCellState(x, y) {
       if (gridState === CELL_STATES.END) break;
 
       // Overwrite EMPTY and PATH states with COLLISION state
-      const index = STATE.walls.findIndex((wall) => wall[0] == x && wall[1] == y)
-      index >= 0 ? STATE.walls.splice(index, 1) : STATE.walls.push([x, y]);
-      STATE.grid[y][x] = [CELL_STATES.EMPTY, CELL_STATES.PATH].includes(gridState)
-        ? CELL_STATES.COLLISION 
+      const index = STATE.walls.findIndex((wall) => wall.x == x && wall.y == y);
+      index >= 0 ? STATE.walls.splice(index, 1) : STATE.walls.push({ x, y });
+      STATE.grid[y][x] = [CELL_STATES.EMPTY, CELL_STATES.PATH].includes(
+        gridState
+      )
+        ? CELL_STATES.COLLISION
         : CELL_STATES.EMPTY;
     }
   }
@@ -224,7 +270,7 @@ function setCellState(x, y) {
 function getActiveCellPos(e) {
   const mousePos = {
     x: e.pageX - canvas.offsetLeft,
-    y: e.pageY - canvas.offsetTop
+    y: e.pageY - canvas.offsetTop,
   };
   return pixelToCellPos(mousePos.x, mousePos.y);
 }
@@ -237,16 +283,16 @@ function updateDragState(cellPos) {
   draw();
 }
 
-canvas.addEventListener('mousedown', (e) => {
+canvas.addEventListener("mousedown", (e) => {
   DRAGGING = true;
   const cellPos = getActiveCellPos(e);
   updateDragState(cellPos);
 });
-canvas.addEventListener('mouseup', () => {
+canvas.addEventListener("mouseup", () => {
   DRAGGING = false;
   DRAG_CELL = null;
 });
-canvas.addEventListener('mousemove', (e) => {
+canvas.addEventListener("mousemove", (e) => {
   if (DRAGGING) {
     const cellPos = getActiveCellPos(e);
     if (DRAG_CELL?.x !== cellPos.x || DRAG_CELL?.y !== cellPos.y) {
@@ -255,5 +301,12 @@ canvas.addEventListener('mousemove', (e) => {
   }
 });
 
-STATE = stateInit();
+const init = stateInit();
+STATE.grid = init.grid;
+STATE.cellState = init.cellState;
+STATE.startPos = init.startPos;
+STATE.endPos = init.endPos;
+STATE.aStarPath = init.aStarPath;
+STATE.walls = init.walls;
+STATE.duration = init.duration;
 drawGrid();
